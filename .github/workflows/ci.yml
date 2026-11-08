@@ -1,0 +1,59 @@
+name: pik
+
+on:
+  pull_request:
+    paths: ['packages/cli/**', 'catalog.yaml', '.github/workflows/cli.yml']
+  push:
+    branches: [main]
+    paths: ['packages/cli/**', 'catalog.yaml', '.github/workflows/cli.yml']
+  schedule:
+    - cron: '23 5 * * 1'
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: packages/cli
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: packages/cli/go.mod
+          cache-dependency-path: packages/cli/go.sum
+      - name: Check formatting
+        run: test -z "$(gofmt -l .)"
+      - uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
+        with:
+          version: v2.15.0
+          working-directory: packages/cli
+      - name: Test with coverage
+        run: |
+          go test -race -coverpkg=./internal/... -coverprofile=cover.out ./...
+          total=$(go tool cover -func=cover.out | awk '/^total:/ { sub("%", "", $3); print $3 }')
+          echo "Coverage: ${total}%"
+          awk -v total="$total" 'BEGIN { exit !(total >= 80) }' || { echo "::error::Coverage ${total}% is under 80%"; exit 1; }
+
+  starters:
+    needs: test
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: packages/cli/go.mod
+          cache-dependency-path: packages/cli/go.sum
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        with:
+          version: 12.18.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
+      - run: go build -o "$RUNNER_TEMP/pik" .
+      - name: Generate and check every released starter
+        working-directory: .
+        run: scripts/check-starters.sh "$RUNNER_TEMP/pik"
