@@ -1,0 +1,78 @@
+version: 2
+project_name: pik
+
+builds:
+  - id: pik
+    main: ./cmd/pik
+    binary: pik
+    env: [CGO_ENABLED=0]
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+    flags: [-trimpath]
+    ldflags: ["-s -w -X main.version={{ .Version }}"]
+    mod_timestamp: "{{ .CommitTimestamp }}"
+
+archives:
+  - formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files: [LICENSE, README.md]
+
+checksum:
+  name_template: checksums.txt
+
+signs:
+  - cmd: cosign
+    signature: "${artifact}.sigstore.json"
+    args: ["sign-blob", "--bundle=${signature}", "${artifact}", "--yes"]
+    artifacts: checksum
+
+sboms:
+  - artifacts: archive
+
+homebrew_casks:
+  - name: pik
+    binaries: [pik]
+    homepage: https://github.com/opikdev/starters
+    description: Create projects from agent-ready starter templates
+    hooks:
+      post:
+        install_steps: |
+          on_macos do
+            run "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "{{ .StagedPath }}/pik"]
+          end
+    repository:
+      owner: opikdev
+      name: homebrew-tap
+      token: "{{ .Env.PUBLISH_TOKEN }}"
+
+scoops:
+  - name: pik
+    homepage: https://github.com/opikdev/starters
+    description: Create projects from agent-ready starter templates
+    license: MIT
+    repository:
+      owner: opikdev
+      name: scoop-bucket
+      token: "{{ .Env.PUBLISH_TOKEN }}"
+
+release:
+  github:
+    owner: opikdev
+    name: starters
+  footer: |
+    ## Verify
+
+    ```sh
+    cosign verify-blob \
+      --certificate-identity 'https://github.com/opikdev/starters/.github/workflows/release.yml@refs/tags/{{ .Tag }}' \
+      --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' \
+      --bundle checksums.txt.sigstore.json checksums.txt
+    sha256sum --check --ignore-missing checksums.txt
+    ```
+
+changelog:
+  filters:
+    exclude: ["^docs", "^test", "^chore", "^ci"]

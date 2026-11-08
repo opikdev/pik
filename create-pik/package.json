@@ -1,0 +1,24 @@
+{
+  "name": "create-pik",
+  "version": "0.0.0",
+  "description": "Create a project from an agent-ready starter template with pik",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "create-pik": "index.js"
+  },
+  "files": ["index.js", "README.md"],
+  "engines": {
+    "node": ">=20"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/opikdev/starters.git",
+    "directory": "packages/create-pik"
+  },
+  "homepage": "https://github.com/opikdev/starters",
+  "keywords": ["create", "starter", "template", "scaffold", "agents"],
+  "scripts": {
+    "test": "node --test"
+  }
+}
