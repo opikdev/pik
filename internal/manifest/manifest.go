@@ -11,19 +11,26 @@ import (
 	"go.yaml.in/yaml/v3"
 )
 
-// FileName is where a starter keeps its manifest.
+// FileName is where a starter or add-on keeps its manifest.
 const FileName = "pik.yaml"
 
-// Manifest describes how pik turns a starter into a new project.
+// Manifest describes how pik turns a starter into a new project, or adds an add-on to one.
 type Manifest struct {
 	Schema   int           `yaml:"schema"`
 	Requires []Requirement `yaml:"requires"`
 	Prompts  []Prompt      `yaml:"prompts"`
 	Replace  []Replacement `yaml:"replace"`
 	Exclude  []string      `yaml:"exclude"`
+	Add      *AddSpec      `yaml:"add"`
 	Setup    []string      `yaml:"setup"`
 	Next     []string      `yaml:"next"`
 	Check    []string      `yaml:"check"`
+}
+
+// AddSpec is the part of an add-on's manifest that pik add uses.
+type AddSpec struct {
+	// From is the folder in the add-on whose files pik add copies into a project.
+	From string `yaml:"from"`
 }
 
 // Requirement is a tool the project needs, with an optional minimum version.
@@ -94,6 +101,14 @@ func Parse(data []byte) (*Manifest, error) {
 	}
 	for _, file := range parsed.Exclude {
 		if err := checkRelative(file); err != nil {
+			return nil, err
+		}
+	}
+	if parsed.Add != nil {
+		if len(parsed.Prompts) > 0 || len(parsed.Replace) > 0 || len(parsed.Exclude) > 0 {
+			return nil, fmt.Errorf("%s: an add-on can't use prompts, replace, or exclude", FileName)
+		}
+		if err := checkRelative(parsed.Add.From); err != nil {
 			return nil, err
 		}
 	}

@@ -12,8 +12,8 @@ import (
 
 func (a *app) doctorCommand() *cobra.Command {
 	return &cobra.Command{
-		Use:   "doctor [starter]",
-		Short: "Check that the tools pik and a starter need are installed",
+		Use:   "doctor [starter or add-on]",
+		Short: "Check that the tools pik and a starter or add-on need are installed",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			results := []tools.Result{tools.Check(cmd.Context(), manifest.Requirement{Name: "git"})}
@@ -25,7 +25,13 @@ func (a *app) doctorCommand() *cobra.Command {
 					return err
 				}
 				for _, requirement := range requirements {
-					results = append(results, tools.Check(cmd.Context(), requirement))
+					result := tools.Check(cmd.Context(), requirement)
+					if requirement.Name == "git" {
+						// The starter or add-on needs Git too, so its check replaces the optional one.
+						results[0] = result
+						continue
+					}
+					results = append(results, result)
 				}
 			}
 
@@ -58,7 +64,10 @@ func (a *app) requirements(cmd *cobra.Command, name string) ([]manifest.Requirem
 	}
 	entry, err := parsed.Starter(name)
 	if err != nil {
-		return nil, err
+		var addonErr error
+		if entry, addonErr = parsed.Addon(name); addonErr != nil {
+			return nil, err
+		}
 	}
 	owner, repo, err := entry.GitHubRepo()
 	if err != nil {

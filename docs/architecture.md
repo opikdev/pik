@@ -12,10 +12,11 @@ flowchart LR
 | Package | Path | Does |
 |---|---|---|
 | Entry point | `cmd/pik/` | Sets the version and runs the CLI |
-| Commands | `internal/cli/` | `new`, `list`, and `doctor`, with prompts and `--json` output |
+| Commands | `internal/cli/` | `new`, `add`, `list`, and `doctor`, with prompts and `--json` output |
 | Catalog | `internal/catalog/` | Parses `catalog.yaml` and finds a released starter |
 | Manifest | `internal/manifest/` | Parses and validates each starter's `pik.yaml` |
 | Project | `internal/project/` | Downloads, extracts, customizes, and records a project |
+| Add-on | `internal/addon/` | Copies an add-on's missing files into a project, and records it |
 | Archive | `internal/archive/` | Extracts a tarball safely, with size and path limits |
 | Source | `internal/source/` | Fetches the catalog, manifests, and archives, with test overrides |
 | Tools | `internal/tools/` | Checks that required tools are installed, for `pik doctor` |

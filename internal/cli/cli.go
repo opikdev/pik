@@ -58,7 +58,7 @@ func (a *app) rootCommand() *cobra.Command {
 	}
 	root.PersistentFlags().BoolVar(&a.json, "json", false, "print machine-readable JSON")
 	root.PersistentFlags().StringVar(&a.catalog, "catalog", "", "catalog URL or file (default: the opikdev/starters catalog)")
-	root.AddCommand(a.listCommand(), a.doctorCommand(), a.newCommand())
+	root.AddCommand(a.listCommand(), a.doctorCommand(), a.newCommand(), a.addCommand())
 	return root
 }
 
