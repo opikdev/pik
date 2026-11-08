@@ -4,6 +4,8 @@ All notable changes to pik are recorded here. The format follows [Keep a Changel
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-08
+
 ### Changed
 
 - pik moved from opikdev/starters to its own repo, opikdev/pik. Install it with `go install github.com/opikdev/pik/cmd/pik@latest`, and use `https://raw.githubusercontent.com/opikdev/pik/main/install.sh` for the install script.
