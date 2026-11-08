@@ -17,11 +17,12 @@ A `vX.Y.Z` tag on this repo runs `.github/workflows/release.yml`, which publishe
 
 ## Cut a release
 
-1. Move the `Unreleased` entries in `CHANGELOG.md` under the new version.
+1. Move the `Unreleased` entries in `CHANGELOG.md` under the new version, and merge that change through a pull request, because `main` only accepts pull requests.
 2. Make sure CI is green on `main`, including the `release-config` job, which builds a full snapshot.
-3. Tag and push:
+3. Tag the merge commit on `main` and push the tag:
 
    ```sh
+   git switch main && git pull
    git tag -a v0.2.0 -m v0.2.0
    git push origin v0.2.0
    ```
