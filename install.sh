@@ -21,7 +21,10 @@ need uname
 
 case $(uname -s) in
   Darwin) os=darwin ;;
-  Linux) os=linux ;;
+  Linux)
+    os=linux
+    need gzip
+    ;;
   *) fail "$(uname -s) isn't supported by this script. On Windows, run: scoop bucket add opikdev https://github.com/opikdev/scoop-bucket; scoop install pik" ;;
 esac
 

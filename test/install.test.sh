@@ -14,7 +14,7 @@ chmod +x "$sandbox/build/pik"
 tar -czf "$releases/download/v$version/$archive" -C "$sandbox/build" pik
 (cd "$releases/download/v$version" && shasum -a 256 "$archive" >checksums.txt)
 
-for tool in awk cat chmod curl cut dirname mkdir mktemp mv rm sed sh shasum tar tr uname; do
+for tool in awk cat chmod curl cut dirname gzip mkdir mktemp mv rm sed sh shasum tar tr uname; do
   ln -s "$(command -v "$tool")" "$sandbox/bin/$tool"
 done
 
