@@ -64,7 +64,7 @@ func tarball(t *testing.T, files map[string]string) []byte {
 	must(writer.WriteHeader(&tar.Header{Typeflag: tar.TypeXGlobalHeader, Name: "pax_global_header", PAXRecords: map[string]string{"comment": "deadbeef"}}))
 	for name, body := range files {
 		mode := int64(0o644)
-		if strings.HasPrefix(name, ".githooks/") {
+		if strings.Contains(name, ".githooks/") || strings.HasSuffix(name, ".sh") {
 			mode = 0o755
 		}
 		must(writer.WriteHeader(&tar.Header{Name: "demo-starter-1.0.0/" + name, Mode: mode, Size: int64(len(body)), Typeflag: tar.TypeReg}))
@@ -78,7 +78,20 @@ func tarball(t *testing.T, files map[string]string) []byte {
 
 type fixture struct {
 	server   *httptest.Server
+	mux      *http.ServeMux
 	archives int
+}
+
+// serveAddon publishes an agent-harness v0.1.0 archive with these files.
+func (f *fixture) serveAddon(t *testing.T, files map[string]string) {
+	t.Helper()
+	archive := tarball(t, files)
+	f.mux.HandleFunc("/archive/opikdev/agent-harness/tar.gz/refs/tags/v0.1.0", func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write(archive)
+	})
+	f.mux.HandleFunc("/raw/opikdev/agent-harness/v0.1.0/pik.yaml", func(w http.ResponseWriter, _ *http.Request) {
+		fmt.Fprint(w, files["pik.yaml"])
+	})
 }
 
 func newFixture(t *testing.T, files map[string]string) *fixture {
@@ -111,6 +124,7 @@ func newFixture(t *testing.T, files map[string]string) *fixture {
 		f.archives++
 		_, _ = w.Write(archive)
 	})
+	f.mux = mux
 	f.server = httptest.NewServer(mux)
 	t.Cleanup(f.server.Close)
 	t.Setenv("PIK_CATALOG", f.server.URL+"/catalog.yaml")

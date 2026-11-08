@@ -11,7 +11,8 @@ A CLI that creates projects from agent-ready starter templates. It reads the [st
 - **Prompts or one line:** answer questions, or pass `--set name=value --yes` from a script or agent.
 - **No placeholders:** starters stay runnable, and `pik.yaml` declares the text to replace.
 - **Consent first:** it shows a starter's setup commands and asks before running them.
-- **Recorded answers:** `.pik.yaml` keeps the template, version, commit, and answers for later updates.
+- **Add-ons for existing repos:** `pik add agent-harness` adds files without overwriting yours.
+- **Recorded answers:** `.pik.yaml` keeps the template, add-ons, versions, commits, and answers for later updates.
 - **Agent-friendly:** every command takes `--json`.
 - **Signed releases:** static binaries for macOS, Linux, and Windows, with checksums signed by cosign.
 
@@ -45,8 +46,9 @@ Binaries are on the [releases page](https://github.com/opikdev/pik/releases), wi
 | Command | Does |
 |---|---|
 | `pik list` | Lists the starters and add-ons in the catalog |
-| `pik doctor [starter]` | Checks that Git, and the tools a starter needs, are installed |
+| `pik doctor [name]` | Checks that Git, and the tools a starter or add-on needs, are installed |
 | `pik new [starter] [dir]` | Creates a project. With no arguments, it asks for everything |
+| `pik add [add-on] [dir]` | Adds an add-on to an existing project, such as `agent-harness`. It keeps every file that already exists |
 
 ```sh
 pik new api-hono-starter my-api --set owner=acme --yes
@@ -55,8 +57,9 @@ pik new api-hono-starter my-api --set owner=acme --yes
 | Flag | Applies to | Does |
 |---|---|---|
 | `--set name=value` | `new` | Answers a starter prompt. Repeat it for each prompt |
-| `--yes` | `new` | Accepts defaults and runs the starter's setup commands without asking |
-| `--no-setup` | `new` | Skips the setup commands |
+| `--yes` | `new`, `add` | Accepts defaults and runs setup commands without asking |
+| `--no-setup` | `new`, `add` | Skips the setup commands |
+| `--dry-run` | `add` | Lists the files it would add and keep, without writing anything |
 | `--no-git` | `new` | Skips `git init` |
 | `--json` | All | Prints JSON, for agents and scripts |
 | `--catalog <url-or-file>` | All | Reads another catalog |

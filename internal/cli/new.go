@@ -89,7 +89,7 @@ func (a *app) runNew(cmd *cobra.Command, args []string, flags newFlags) error {
 		}
 	}
 
-	setupRan, err := a.setup(result, flags, interactive)
+	setupRan, err := a.setup(result.Dir, result.Manifest.Setup, flags, interactive)
 	if err != nil {
 		return err
 	}
@@ -177,23 +177,61 @@ func initGit(dir string) (bool, error) {
 	if output, err := exec.Command("git", "-C", dir, "init", "--quiet", "--initial-branch=main").CombinedOutput(); err != nil {
 		return false, fmt.Errorf("git init: %v: %s", err, output)
 	}
-	if _, err := os.Stat(filepath.Join(dir, ".githooks")); err == nil {
-		if output, err := exec.Command("git", "-C", dir, "config", "core.hooksPath", ".githooks").CombinedOutput(); err != nil {
-			return false, fmt.Errorf("enable Git hooks: %v: %s", err, output)
-		}
+	if _, err := enableHooks(dir); err != nil {
+		return false, err
 	}
 	return true, nil
 }
 
-func (a *app) setup(result *project.Result, flags newFlags, interactive bool) (bool, error) {
-	commands := result.Manifest.Setup
+// Hook states that enableHooks reports.
+const (
+	hooksNone     = "none"
+	hooksEnabled  = "enabled"
+	hooksKept     = "kept"
+	hooksNotAGit  = "not-a-git-repo"
+	hooksNoGitCLI = "no-git"
+)
+
+// enableHooks points Git at .githooks when the project has one and no other hooks path is set.
+func enableHooks(dir string) (string, error) {
+	if _, err := os.Stat(filepath.Join(dir, ".githooks")); err != nil {
+		return hooksNone, nil
+	}
+	if _, err := exec.LookPath("git"); err != nil {
+		return hooksNoGitCLI, nil
+	}
+	top, err := exec.Command("git", "-C", dir, "rev-parse", "--show-toplevel").Output()
+	if err != nil || !samePath(strings.TrimSpace(string(top)), dir) {
+		return hooksNotAGit, nil
+	}
+	current, _ := exec.Command("git", "-C", dir, "config", "--get", "core.hooksPath").Output()
+	switch strings.TrimSpace(string(current)) {
+	case ".githooks":
+		return hooksEnabled, nil
+	case "":
+	default:
+		return hooksKept, nil
+	}
+	if output, err := exec.Command("git", "-C", dir, "config", "core.hooksPath", ".githooks").CombinedOutput(); err != nil {
+		return "", fmt.Errorf("enable Git hooks: %v: %s", err, output)
+	}
+	return hooksEnabled, nil
+}
+
+func samePath(a, b string) bool {
+	resolvedA, errA := filepath.EvalSymlinks(a)
+	resolvedB, errB := filepath.EvalSymlinks(b)
+	return errA == nil && errB == nil && filepath.Clean(resolvedA) == filepath.Clean(resolvedB)
+}
+
+func (a *app) setup(dir string, commands []string, flags newFlags, interactive bool) (bool, error) {
 	if len(commands) == 0 || flags.noSetup {
 		return false, nil
 	}
 	consent := flags.yes
 	if !consent && interactive {
-		description := "These run in " + result.Dir + ":\n\n  " + strings.Join(commands, "\n  ")
-		if err := huh.NewConfirm().Title("Run the starter's setup commands?").
+		description := "These run in " + dir + ":\n\n  " + strings.Join(commands, "\n  ")
+		if err := huh.NewConfirm().Title("Run the setup commands?").
 			Description(description).Affirmative("Run them").Negative("Skip").Value(&consent).Run(); err != nil {
 			return false, err
 		}
@@ -204,14 +242,14 @@ func (a *app) setup(result *project.Result, flags newFlags, interactive bool) (b
 	for _, line := range commands {
 		a.progress("Running %s", line)
 		command := shellCommand(line)
-		command.Dir = result.Dir
+		command.Dir = dir
 		command.Stdout = a.stderr
 		if !a.json {
 			command.Stdout = a.stdout
 		}
 		command.Stderr = a.stderr
 		if err := command.Run(); err != nil {
-			return false, fmt.Errorf("setup command %q failed: %w. The project is in %s", line, err, result.Dir)
+			return false, fmt.Errorf("setup command %q failed: %w. The project is in %s", line, err, dir)
 		}
 	}
 	return true, nil

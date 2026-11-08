@@ -72,6 +72,22 @@ func (c *Catalog) Starter(name string) (Entry, error) {
 	return entry, nil
 }
 
+// Addon returns a released add-on by name, ready for pik add.
+func (c *Catalog) Addon(name string) (Entry, error) {
+	index := slices.IndexFunc(c.Starters, func(entry Entry) bool { return entry.Name == name })
+	if index == -1 {
+		return Entry{}, fmt.Errorf("no add-on named %q. Run pik list to see the catalog", name)
+	}
+	entry := c.Starters[index]
+	if entry.Type != "addon" {
+		return Entry{}, fmt.Errorf("%s is a starter, not an add-on. Create a project from it with pik new %s", name, name)
+	}
+	if entry.Version == "" {
+		return Entry{}, fmt.Errorf("%s has no release yet, so there's no version to pin", name)
+	}
+	return entry, nil
+}
+
 // GitHubRepo splits the repo URL into owner and repository name.
 func (e Entry) GitHubRepo() (owner, repo string, err error) {
 	parsed, err := url.Parse(e.Repo)

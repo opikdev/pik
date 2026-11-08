@@ -1,6 +1,6 @@
 # pik.yaml reference
 
-Every starter keeps a `pik.yaml` at its root. `pik new` reads it from the tagged archive, then removes it from the generated project.
+Every starter and add-on keeps a `pik.yaml` at its root. `pik new` reads it from the tagged archive, then removes it from the generated project. `pik add` reads an add-on's manifest the same way.
 
 ```yaml
 schema: 1
@@ -34,3 +34,24 @@ check: [pnpm verify]
 | `check` | list | Commands that prove a generated project works. Parent CI runs them |
 
 Unknown fields are rejected. A replacement whose `from` text is missing from a listed file fails the generation, so a starter and its manifest can't drift apart silently.
+
+## Add-ons
+
+An add-on uses `add` instead of `prompts`, `replace`, and `exclude`:
+
+```yaml
+schema: 1
+requires:
+  - name: git
+  - name: bash
+add:
+  from: template
+setup: [bash .agents/check.sh]
+check: [bash .agents/check.sh]
+```
+
+| Field | Type | Description |
+|---|---|---|
+| `add.from` | string | Folder in the add-on whose files `pik add` copies into the project |
+
+`pik add` copies every file in `add.from` that doesn't exist in the project yet, and keeps the ones that do. If the add-on adds `.githooks` to a Git repo root with no `core.hooksPath`, pik turns the hooks on. It records the add-on under `addons` in `.pik.yaml`, then runs `setup` with consent. Parent CI adds each released add-on to an empty repo and runs `check` there.

@@ -4,6 +4,12 @@ All notable changes to pik are recorded here. The format follows [Keep a Changel
 
 ## [Unreleased]
 
+### Added
+
+- `pik add`, which copies an add-on such as `agent-harness` into an existing project without overwriting files, turns on its Git hooks, and records it in `.pik.yaml`. It supports `--dry-run`, `--yes`, `--no-setup`, and `--json`.
+- An `add` section in `pik.yaml`, for add-ons.
+- `pik doctor` checks the tools an add-on needs, too.
+
 ## [0.2.0] - 2026-11-08
 
 ### Changed
