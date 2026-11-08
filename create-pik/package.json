@@ -7,17 +7,26 @@
   "bin": {
     "create-pik": "index.js"
   },
-  "files": ["index.js", "README.md"],
+  "files": [
+    "index.js",
+    "README.md"
+  ],
   "engines": {
     "node": ">=20"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/opikdev/starters.git",
-    "directory": "packages/create-pik"
+    "url": "git+https://github.com/opikdev/pik.git",
+    "directory": "create-pik"
   },
-  "homepage": "https://github.com/opikdev/starters",
-  "keywords": ["create", "starter", "template", "scaffold", "agents"],
+  "homepage": "https://github.com/opikdev/pik",
+  "keywords": [
+    "create",
+    "starter",
+    "template",
+    "scaffold",
+    "agents"
+  ],
   "scripts": {
     "test": "node --test"
   }

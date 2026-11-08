@@ -7,13 +7,13 @@ A `vX.Y.Z` tag on this repo runs `.github/workflows/release.yml`, which publishe
 | GitHub release | Binaries for macOS, Linux, and Windows on amd64 and arm64, with SBOMs and `checksums.txt` signed by cosign |
 | Homebrew | Updates the cask in [opikdev/homebrew-tap](https://github.com/opikdev/homebrew-tap) |
 | Scoop | Updates the manifest in [opikdev/scoop-bucket](https://github.com/opikdev/scoop-bucket) |
-| Go | Adds a `packages/cli/vX.Y.Z` tag, so `go install` resolves the version |
+| Go | The same tag is the Go module version, so `go install github.com/opikdev/pik/cmd/pik@latest` resolves it |
 | npm | Publishes `create-pik` at the same version through trusted publishing, with provenance |
 
 ## Set up publishing once
 
 - Save `PUBLISH_TOKEN` as a repo secret: a fine-grained GitHub token with read and write **Contents** on `homebrew-tap` and `scoop-bucket`.
-- On npmjs.com, add a trusted publisher to `create-pik`: GitHub Actions, repository `opikdev/starters`, workflow `release.yml`. npm then accepts this workflow without a token.
+- On npmjs.com, add a trusted publisher to `create-pik`: GitHub Actions, repository `opikdev/pik`, workflow `release.yml`, with the **npm publish** permission. npm then accepts this workflow without a token.
 
 ## Cut a release
 
@@ -31,9 +31,11 @@ A `vX.Y.Z` tag on this repo runs `.github/workflows/release.yml`, which publishe
 
 ## Verify a download
 
+Releases up to v0.1.1 were published from opikdev/starters, so verify those with that repo in the identity instead.
+
 ```sh
 cosign verify-blob \
-  --certificate-identity 'https://github.com/opikdev/starters/.github/workflows/release.yml@refs/tags/v0.1.0' \
+  --certificate-identity 'https://github.com/opikdev/pik/.github/workflows/release.yml@refs/tags/v0.2.0' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
   --bundle checksums.txt.sigstore.json checksums.txt
 sha256sum --check --ignore-missing checksums.txt

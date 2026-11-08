@@ -12,9 +12,9 @@ import (
 	"charm.land/huh/v2"
 	"github.com/spf13/cobra"
 
-	"github.com/opikdev/starters/packages/cli/internal/catalog"
-	"github.com/opikdev/starters/packages/cli/internal/manifest"
-	"github.com/opikdev/starters/packages/cli/internal/project"
+	"github.com/opikdev/pik/internal/catalog"
+	"github.com/opikdev/pik/internal/manifest"
+	"github.com/opikdev/pik/internal/project"
 )
 
 type newFlags struct {

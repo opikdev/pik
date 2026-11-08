@@ -35,7 +35,7 @@ sboms:
 homebrew_casks:
   - name: pik
     binaries: [pik]
-    homepage: https://github.com/opikdev/starters
+    homepage: https://github.com/opikdev/pik
     description: Create projects from agent-ready starter templates
     hooks:
       post:
@@ -50,7 +50,7 @@ homebrew_casks:
 
 scoops:
   - name: pik
-    homepage: https://github.com/opikdev/starters
+    homepage: https://github.com/opikdev/pik
     description: Create projects from agent-ready starter templates
     license: MIT
     repository:
@@ -61,13 +61,13 @@ scoops:
 release:
   github:
     owner: opikdev
-    name: starters
+    name: pik
   footer: |
     ## Verify
 
     ```sh
     cosign verify-blob \
-      --certificate-identity 'https://github.com/opikdev/starters/.github/workflows/release.yml@refs/tags/{{ .Tag }}' \
+      --certificate-identity 'https://github.com/opikdev/pik/.github/workflows/release.yml@refs/tags/{{ .Tag }}' \
       --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' \
       --bundle checksums.txt.sigstore.json checksums.txt
     sha256sum --check --ignore-missing checksums.txt

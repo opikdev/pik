@@ -58,11 +58,20 @@ func TestStarterRejects(t *testing.T) {
 	}
 }
 
+func TestParseSkipsTypesFromNewerReleases(t *testing.T) {
+	parsed, err := Parse([]byte("tools:\n  - name: pik\nstarters:\n  - name: future\n    type: workspace\n  - name: x\n    repo: https://github.com/a/x\n    type: starter\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if names := parsed.Names(); len(names) != 1 || names[0] != "x" {
+		t.Fatalf("names = %v, want only x", names)
+	}
+}
+
 func TestParseRejects(t *testing.T) {
 	cases := map[string]string{
 		"bad yaml":     "starters: [",
 		"missing repo": "starters:\n  - name: x\n    type: starter\n",
-		"unknown type": "starters:\n  - name: x\n    repo: https://github.com/a/x\n    type: thing\n",
 		"not github":   "starters:\n  - name: x\n    repo: https://gitlab.com/a/x\n    type: starter\n",
 		"no repo name": "starters:\n  - name: x\n    repo: https://github.com/a\n    type: starter\n",
 	}

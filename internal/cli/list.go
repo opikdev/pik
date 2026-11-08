@@ -7,8 +7,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/opikdev/starters/packages/cli/internal/catalog"
-	"github.com/opikdev/starters/packages/cli/internal/source"
+	"github.com/opikdev/pik/internal/catalog"
+	"github.com/opikdev/pik/internal/source"
 )
 
 func (a *app) loadCatalog(cmd *cobra.Command) (*catalog.Catalog, *source.Source, error) {

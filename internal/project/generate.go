@@ -15,9 +15,9 @@ import (
 
 	"go.yaml.in/yaml/v3"
 
-	"github.com/opikdev/starters/packages/cli/internal/archive"
-	"github.com/opikdev/starters/packages/cli/internal/catalog"
-	"github.com/opikdev/starters/packages/cli/internal/manifest"
+	"github.com/opikdev/pik/internal/archive"
+	"github.com/opikdev/pik/internal/catalog"
+	"github.com/opikdev/pik/internal/manifest"
 )
 
 // RecordFile is written into every generated project.

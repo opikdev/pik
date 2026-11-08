@@ -6,7 +6,7 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 
 const { version } = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8'));
-const releases = process.env.PIK_DOWNLOAD_URL ?? 'https://github.com/opikdev/starters/releases';
+const releases = process.env.PIK_DOWNLOAD_URL ?? 'https://github.com/opikdev/pik/releases';
 const timeoutMs = 60_000;
 
 const platforms = { darwin: 'darwin', linux: 'linux', win32: 'windows' };

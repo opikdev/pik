@@ -30,17 +30,20 @@ func Parse(data []byte) (*Catalog, error) {
 	if err := yaml.Unmarshal(data, &parsed); err != nil {
 		return nil, fmt.Errorf("parse catalog: %w", err)
 	}
+	known := parsed.Starters[:0]
 	for _, entry := range parsed.Starters {
+		if entry.Type != "starter" && entry.Type != "addon" {
+			continue
+		}
 		if entry.Name == "" || entry.Repo == "" {
 			return nil, fmt.Errorf("catalog entry %q is missing a name or repo", entry.Name)
-		}
-		if entry.Type != "starter" && entry.Type != "addon" {
-			return nil, fmt.Errorf("catalog entry %s has unknown type %q", entry.Name, entry.Type)
 		}
 		if _, _, err := entry.GitHubRepo(); err != nil {
 			return nil, err
 		}
+		known = append(known, entry)
 	}
+	parsed.Starters = known
 	return &parsed, nil
 }
 

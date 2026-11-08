@@ -1,74 +1,60 @@
-name: pik
+name: CI
 
 on:
   pull_request:
-    paths: ['packages/**', 'catalog.yaml', 'scripts/check-starters.sh', '.github/workflows/cli.yml']
   push:
     branches: [main]
-    paths: ['packages/**', 'catalog.yaml', 'scripts/check-starters.sh', '.github/workflows/cli.yml']
   schedule:
-    - cron: '23 5 * * 1'
+    - cron: "23 5 * * 1"
 
 permissions:
   contents: read
 
-defaults:
-  run:
-    working-directory: packages/cli
-
 jobs:
-  test:
+  check:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version-file: packages/cli/go.mod
-          cache-dependency-path: packages/cli/go.sum
+          go-version-file: go.mod
       - name: Check formatting
         run: test -z "$(gofmt -l .)"
       - uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
         with:
           version: v2.15.0
           install-mode: goinstall
-          working-directory: packages/cli
       - name: Test with coverage
         run: |
           go test -race -coverpkg=./internal/... -coverprofile=cover.out ./...
           total=$(go tool cover -func=cover.out | awk '/^total:/ { sub("%", "", $3); print $3 }')
           echo "Coverage: ${total}%"
           awk -v total="$total" 'BEGIN { exit !(total >= 80) }' || { echo "::error::Coverage ${total}% is under 80%"; exit 1; }
+      - name: Install actionlint
+        run: |
+          curl -fsSL --retry 5 --retry-all-errors --retry-delay 15 -o actionlint.tar.gz https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz
+          echo "8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8  actionlint.tar.gz" | sha256sum -c
+          sudo tar -xzf actionlint.tar.gz -C /usr/local/bin actionlint
+          rm actionlint.tar.gz
+      - run: actionlint
+      - run: shellcheck install.sh test/*.sh
+      - name: Check that create-pik ships the same license
+        run: cmp LICENSE create-pik/LICENSE
 
-  starters:
-    needs: test
-    runs-on: ubuntu-24.04
+  install-script:
+    strategy:
+      matrix:
+        os: [ubuntu-24.04, macos-15]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version-file: packages/cli/go.mod
-          cache-dependency-path: packages/cli/go.sum
-      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
-        with:
-          version: 12.18.0
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version: 26
-      - uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
-        with:
-          version: v2.15.0
-          install-mode: goinstall
-          install-only: true
-      - run: go build -o "$RUNNER_TEMP/pik" ./cmd/pik
-      - name: Generate and check every released starter
-        working-directory: .
-        run: scripts/check-starters.sh "$RUNNER_TEMP/pik"
+      - run: test/install.test.sh
 
   create-pik:
     runs-on: ubuntu-24.04
     defaults:
       run:
-        working-directory: packages/create-pik
+        working-directory: create-pik
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -84,8 +70,7 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version-file: packages/cli/go.mod
-          cache-dependency-path: packages/cli/go.sum
+          go-version-file: go.mod
       - id: syft
         uses: anchore/sbom-action/download-syft@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
         continue-on-error: true
@@ -99,12 +84,11 @@ jobs:
         with:
           version: v2.20.0
           args: release --snapshot --clean --skip=sign,publish
-          workdir: packages/cli
         env:
           PUBLISH_TOKEN: unused
 
   smoke:
-    needs: test
+    needs: check
     strategy:
       matrix:
         os: [ubuntu-24.04, macos-15, windows-2025]
@@ -112,19 +96,44 @@ jobs:
     defaults:
       run:
         shell: bash
-        working-directory: packages/cli
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version-file: packages/cli/go.mod
-          cache-dependency-path: packages/cli/go.sum
+          go-version-file: go.mod
       - run: go build -o "$RUNNER_TEMP/pik" ./cmd/pik
-      - name: Create a project with pik
+      - name: Create a project from the live catalog
         working-directory: ${{ runner.temp }}
         run: |
-          ./pik list --catalog "$GITHUB_WORKSPACE/catalog.yaml"
-          ./pik new api-hono-starter app --catalog "$GITHUB_WORKSPACE/catalog.yaml" --yes --no-setup --no-git
+          ./pik list
+          ./pik new api-hono-starter app --yes --no-setup --no-git
           test -f app/.pik.yaml
           test -f app/.claude/skills/verify-change/SKILL.md
           test ! -e app/pik.yaml
+
+  starters:
+    needs: check
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: opikdev/starters
+          path: starters
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        with:
+          version: 12.18.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
+      - uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
+        with:
+          version: v2.15.0
+          install-mode: goinstall
+          install-only: true
+      - run: go build -o "$RUNNER_TEMP/pik" ./cmd/pik
+      - name: Generate and check every released starter
+        run: starters/scripts/check-starters.sh "$RUNNER_TEMP/pik"

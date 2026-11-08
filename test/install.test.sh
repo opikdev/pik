@@ -1,6 +1,19 @@
 #!/usr/bin/env bash
-# shellcheck source=scripts/tests/lib.sh
-source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
+# Tests install.sh against fake local releases, with only the tools it declares on PATH.
+set -euo pipefail
+
+root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+sandbox=$(mktemp -d)
+trap 'rm -rf "$sandbox"' EXIT
+
+fail() {
+  echo "FAIL: $1" >&2
+  exit 1
+}
+
+pass() {
+  echo "ok - $1"
+}
 
 releases="$sandbox/releases"
 version=1.2.3

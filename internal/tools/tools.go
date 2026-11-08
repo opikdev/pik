@@ -10,7 +10,7 @@ import (
 
 	"golang.org/x/mod/semver"
 
-	"github.com/opikdev/starters/packages/cli/internal/manifest"
+	"github.com/opikdev/pik/internal/manifest"
 )
 
 // Result is the outcome of checking one tool.

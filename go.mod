@@ -1,4 +1,4 @@
-module github.com/opikdev/starters/packages/cli
+module github.com/opikdev/pik
 
 go 1.27
 

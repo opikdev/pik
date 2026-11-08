@@ -1,8 +1,8 @@
 #!/bin/sh
-# Installs pik: curl -fsSL https://raw.githubusercontent.com/opikdev/starters/main/install.sh | sh
+# Installs pik: curl -fsSL https://raw.githubusercontent.com/opikdev/pik/main/install.sh | sh
 set -eu
 
-repo=opikdev/starters
+repo=opikdev/pik
 releases=${PIK_DOWNLOAD_URL:-https://github.com/$repo/releases}
 install_dir=${PIK_INSTALL_DIR:-$HOME/.local/bin}
 

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/opikdev/starters/packages/cli/internal/manifest"
+	"github.com/opikdev/pik/internal/manifest"
 )
 
 func fakeTool(t *testing.T, name, output string, exit int) {

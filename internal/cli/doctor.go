@@ -6,8 +6,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/opikdev/starters/packages/cli/internal/manifest"
-	"github.com/opikdev/starters/packages/cli/internal/tools"
+	"github.com/opikdev/pik/internal/manifest"
+	"github.com/opikdev/pik/internal/tools"
 )
 
 func (a *app) doctorCommand() *cobra.Command {

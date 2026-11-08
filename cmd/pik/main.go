@@ -5,7 +5,7 @@ import (
 	"runtime/debug"
 	"strings"
 
-	"github.com/opikdev/starters/packages/cli/internal/cli"
+	"github.com/opikdev/pik/internal/cli"
 )
 
 var version = "dev"
