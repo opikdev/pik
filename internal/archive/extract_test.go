@@ -85,6 +85,42 @@ func TestExtract(t *testing.T) {
 	}
 }
 
+func TestExtractCopiesLinksWhenAsked(t *testing.T) {
+	dest := t.TempDir()
+	archive := build(t, "",
+		entry{name: "demo/.agents/skills/a/SKILL.md", body: "skill"},
+		entry{name: "demo/docs/guide.md", body: "guide"},
+		entry{name: "demo/.claude/skills/a", typeflag: tar.TypeSymlink, link: "../../.agents/skills/a"},
+		entry{name: "demo/README.md", typeflag: tar.TypeSymlink, link: "docs/guide.md"},
+	)
+	limits := DefaultLimits
+	limits.CopyLinks = true
+	if _, err := Extract(archive, dest, limits); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{".claude/skills/a", "README.md"} {
+		info, err := os.Lstat(filepath.Join(dest, name))
+		if err != nil || info.Mode()&os.ModeSymlink != 0 {
+			t.Errorf("%s should be a copy, not a link: %v %v", name, info, err)
+		}
+	}
+	if body, _ := os.ReadFile(filepath.Join(dest, ".claude/skills/a/SKILL.md")); string(body) != "skill" {
+		t.Errorf("copied skill = %q", body)
+	}
+	if body, _ := os.ReadFile(filepath.Join(dest, "README.md")); string(body) != "guide" {
+		t.Errorf("copied file = %q", body)
+	}
+}
+
+func TestExtractRejectsLinksToMissingTargetsWhenCopying(t *testing.T) {
+	limits := DefaultLimits
+	limits.CopyLinks = true
+	archive := build(t, "", entry{name: "demo/link", typeflag: tar.TypeSymlink, link: "missing"})
+	if _, err := Extract(archive, t.TempDir(), limits); err == nil || !strings.Contains(err.Error(), "isn't in the archive") {
+		t.Fatalf("error = %v", err)
+	}
+}
+
 func TestExtractRejects(t *testing.T) {
 	cases := map[string]entry{
 		"a parent path":       {name: "demo/../../evil", body: "x"},

@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"charm.land/huh/v2"
@@ -202,7 +203,7 @@ func (a *app) setup(result *project.Result, flags newFlags, interactive bool) (b
 	}
 	for _, line := range commands {
 		a.progress("Running %s", line)
-		command := exec.Command("sh", "-c", line)
+		command := shellCommand(line)
 		command.Dir = result.Dir
 		command.Stdout = a.stderr
 		if !a.json {
@@ -214,6 +215,13 @@ func (a *app) setup(result *project.Result, flags newFlags, interactive bool) (b
 		}
 	}
 	return true, nil
+}
+
+func shellCommand(line string) *exec.Cmd {
+	if runtime.GOOS == "windows" {
+		return exec.Command("cmd", "/C", line)
+	}
+	return exec.Command("sh", "-c", line)
 }
 
 func (a *app) progress(format string, args ...any) {
