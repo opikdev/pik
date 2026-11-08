@@ -8,14 +8,12 @@ A `vX.Y.Z` tag on this repo runs `.github/workflows/release.yml`, which publishe
 | Homebrew | Updates the cask in [opikdev/homebrew-tap](https://github.com/opikdev/homebrew-tap) |
 | Scoop | Updates the manifest in [opikdev/scoop-bucket](https://github.com/opikdev/scoop-bucket) |
 | Go | Adds a `packages/cli/vX.Y.Z` tag, so `go install` resolves the version |
-| npm | Publishes `create-pik` at the same version, with provenance |
+| npm | Publishes `create-pik` at the same version through trusted publishing, with provenance |
 
-## Set up the secrets once
+## Set up publishing once
 
-| Secret | Holds |
-|---|---|
-| `PUBLISH_TOKEN` | A fine-grained GitHub token with read and write **Contents** on `homebrew-tap` and `scoop-bucket` |
-| `NPM_TOKEN` | An npm granular access token that can publish `create-pik` |
+- Save `PUBLISH_TOKEN` as a repo secret: a fine-grained GitHub token with read and write **Contents** on `homebrew-tap` and `scoop-bucket`.
+- On npmjs.com, add a trusted publisher to `create-pik`: GitHub Actions, repository `opikdev/starters`, workflow `release.yml`. npm then accepts this workflow without a token.
 
 ## Cut a release
 
