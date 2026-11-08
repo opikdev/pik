@@ -2,13 +2,17 @@
 
 Create projects from the [starters](../../README.md) catalog.
 
-## Install from source
+## Install
 
-You need Go 1.27 or later:
+| Method | Command |
+|---|---|
+| Homebrew, on macOS and Linux | `brew install opikdev/tap/pik` |
+| Scoop, on Windows | `scoop bucket add opikdev https://github.com/opikdev/scoop-bucket`, then `scoop install pik` |
+| Install script, on macOS and Linux | `curl -fsSL https://raw.githubusercontent.com/opikdev/starters/main/install.sh \| sh` |
+| npm, without installing | `npm create pik@latest` |
+| Go 1.27 or later | `go install github.com/opikdev/starters/packages/cli/cmd/pik@latest` |
 
-```sh
-go install github.com/opikdev/starters/packages/cli@latest
-```
+Binaries for each release are on the [releases page](https://github.com/opikdev/starters/releases), with signed checksums. The install script always checks the checksum, and checks the signature too when `cosign` is installed.
 
 ## Use it
 
