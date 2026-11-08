@@ -35,7 +35,8 @@ func TestCheck(t *testing.T) {
 		{"an equal two-part version", "go1.27", 0, "1.27", true, ""},
 		{"no version needed", "anything", 0, "", true, ""},
 		{"an unreadable version", "unknown", 0, "1.0.0", false, "couldn't be read"},
-		{"a broken tool", "boom", 1, "", false, "not working"},
+		{"a tool without --version, when no version is needed", "Illegal option --", 2, "", true, ""},
+		{"a failing version command, when a version is needed", "Illegal option -- 1.2.3", 2, "1.0.0", false, "couldn't be read"},
 	}
 	for _, tc := range cases {
 		fakeTool(t, "faketool", tc.output, tc.exit)

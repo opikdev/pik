@@ -40,14 +40,13 @@ func Check(ctx context.Context, requirement manifest.Requirement) Result {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 	output, err := exec.CommandContext(ctx, requirement.Name, args...).CombinedOutput()
-	found := versionPattern.FindString(string(output))
+	found := ""
+	if err == nil {
+		found = versionPattern.FindString(string(output))
+	}
 	result.Found = found
 
 	if requirement.Version == "" {
-		if err != nil {
-			result.Problem = fmt.Sprintf("installed, but not working: %v", err)
-			return result
-		}
 		result.OK = true
 		return result
 	}
