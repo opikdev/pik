@@ -2,10 +2,10 @@ name: pik
 
 on:
   pull_request:
-    paths: ['packages/cli/**', 'catalog.yaml', '.github/workflows/cli.yml']
+    paths: ['packages/cli/**', 'catalog.yaml', 'scripts/check-starters.sh', '.github/workflows/cli.yml']
   push:
     branches: [main]
-    paths: ['packages/cli/**', 'catalog.yaml', '.github/workflows/cli.yml']
+    paths: ['packages/cli/**', 'catalog.yaml', 'scripts/check-starters.sh', '.github/workflows/cli.yml']
   schedule:
     - cron: '23 5 * * 1'
 
