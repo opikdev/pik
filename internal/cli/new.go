@@ -230,9 +230,12 @@ func (a *app) setup(dir string, commands []string, flags newFlags, interactive b
 	}
 	consent := flags.yes
 	if !consent && interactive {
-		description := "These run in " + dir + ":\n\n  " + strings.Join(commands, "\n  ")
-		if err := huh.NewConfirm().Title("Run the setup commands?").
-			Description(description).Affirmative("Run them").Negative("Skip").Value(&consent).Run(); err != nil {
+		var err error
+		consent, err = confirmSetup("These run in " + dir + ":\n\n  " + strings.Join(commands, "\n  "))
+		if errors.Is(err, huh.ErrUserAborted) {
+			return false, fmt.Errorf("cancelled before setup, so %s has the files but setup didn't run. Run these there:\n  %s", dir, strings.Join(commands, "\n  "))
+		}
+		if err != nil {
 			return false, err
 		}
 	}
@@ -253,6 +256,13 @@ func (a *app) setup(dir string, commands []string, flags newFlags, interactive b
 		}
 	}
 	return true, nil
+}
+
+var confirmSetup = func(description string) (bool, error) {
+	var consent bool
+	err := huh.NewConfirm().Title("Run the setup commands?").
+		Description(description).Affirmative("Run them").Negative("Skip").Value(&consent).Run()
+	return consent, err
 }
 
 func shellCommand(line string) *exec.Cmd {

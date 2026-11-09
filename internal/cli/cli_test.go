@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -14,6 +15,7 @@ import (
 	"strings"
 	"testing"
 
+	"charm.land/huh/v2"
 	"go.yaml.in/yaml/v3"
 )
 
@@ -414,5 +416,22 @@ func TestDoctorFailsOnMissingTools(t *testing.T) {
 	code, stdout, _ := pik(t, "doctor", "demo-starter")
 	if code != 1 || !strings.Contains(stdout, "✗ definitely-not-installed: not installed") {
 		t.Fatalf("exit %d, output %s", code, stdout)
+	}
+}
+
+func TestCancellingSetupSaysTheFilesExist(t *testing.T) {
+	original := confirmSetup
+	t.Cleanup(func() { confirmSetup = original })
+	confirmSetup = func(string) (bool, error) { return false, huh.ErrUserAborted }
+
+	dir := t.TempDir()
+	a := &app{stdout: &bytes.Buffer{}, stderr: &bytes.Buffer{}}
+	_, err := a.setup(dir, []string{"pnpm install", "pnpm build"}, newFlags{}, true)
+	if err == nil || errors.Is(err, huh.ErrUserAborted) {
+		t.Fatalf("err = %v, want an error that isn't a plain cancel", err)
+	}
+	want := "cancelled before setup, so " + dir + " has the files but setup didn't run. Run these there:\n  pnpm install\n  pnpm build"
+	if err.Error() != want {
+		t.Errorf("err = %q, want %q", err, want)
 	}
 }
