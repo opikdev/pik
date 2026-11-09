@@ -54,4 +54,4 @@ check: [bash .agents/check.sh]
 |---|---|---|
 | `add.from` | string | Folder in the add-on whose files `pik add` copies into the project |
 
-`pik add` copies every file in `add.from` that doesn't exist in the project yet, and keeps the ones that do. If the add-on adds `.githooks` to a Git repo root with no `core.hooksPath`, pik turns the hooks on. It records the add-on under `addons` in `.pik.yaml`, then runs `setup` with consent. Parent CI adds each released add-on to an empty repo and runs `check` there.
+`pik add` copies every file in `add.from` that doesn't exist in the project yet, and keeps the ones that do. If the add-on adds `.githooks` to a Git repo root with no `core.hooksPath`, pik turns the hooks on. It records the add-on under `addons` in `.pik.yaml`, then runs `setup` with consent. If `.pik.yaml` already lists the add-on, `pik add` stops without changing anything. Parent CI adds each released add-on to an empty repo and runs `check` there.
