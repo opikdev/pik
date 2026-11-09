@@ -23,7 +23,7 @@
 
 ## Rules
 
-- Run every command above, and `.agents/check.sh`, before calling work done. The pre-commit hook and CI run the checks too.
+- Run every command above, and `.agents/check.sh`, before calling work done. The pre-commit hook runs only `.agents/check.sh`, and CI runs all of them.
 - If the check blocks you, fix the cause. Never edit `.agents/check.sh`, `.githooks/`, or the harness workflow to get past it, and never use `--no-verify`. If the request can't be done without that, stop and ask.
 - After cloning, run `git config core.hooksPath .githooks` once to turn on the hook.
 - Never tag without the user's go-ahead, because a tag publishes to GitHub, Homebrew, Scoop, Go, and npm.
