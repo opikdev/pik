@@ -58,19 +58,25 @@ type Result struct {
 }
 
 // Generate downloads the pinned starter and writes the customized project to opts.Dir.
-// It writes into a temporary folder first, so a failure never leaves a half-made project.
+// It builds the project in a hidden folder inside opts.Dir first, so a failure never leaves a half-made project.
 func Generate(ctx context.Context, archives Archives, opts Options) (*Result, error) {
 	dir, err := filepath.Abs(opts.Dir)
 	if err != nil {
 		return nil, fmt.Errorf("resolve %s: %w", opts.Dir, err)
 	}
-	if err := checkTarget(dir); err != nil {
+	created, err := makeTarget(dir)
+	if err != nil {
 		return nil, err
 	}
-	if err := os.MkdirAll(filepath.Dir(dir), 0o755); err != nil {
-		return nil, fmt.Errorf("create %s: %w", filepath.Dir(dir), err)
+	result, err := generate(ctx, archives, opts, dir)
+	if err != nil && created {
+		_ = os.RemoveAll(dir)
 	}
-	staging, err := os.MkdirTemp(filepath.Dir(dir), ".pik-")
+	return result, err
+}
+
+func generate(ctx context.Context, archives Archives, opts Options, dir string) (*Result, error) {
+	staging, err := os.MkdirTemp(dir, ".pik-")
 	if err != nil {
 		return nil, fmt.Errorf("create a temporary folder: %w", err)
 	}
@@ -120,26 +126,44 @@ func Generate(ctx context.Context, archives Archives, opts Options) (*Result, er
 	if err := writeRecord(staging, record); err != nil {
 		return nil, err
 	}
-
-	if err := os.Remove(dir); err != nil && !errors.Is(err, fs.ErrNotExist) {
-		return nil, fmt.Errorf("replace %s: %w", dir, err)
-	}
-	if err := os.Rename(staging, dir); err != nil {
-		return nil, fmt.Errorf("move the project into %s: %w", dir, err)
+	if err := moveContents(staging, dir); err != nil {
+		return nil, err
 	}
 	return &Result{Dir: dir, Record: record, Manifest: spec}, nil
 }
 
-func checkTarget(dir string) error {
+// makeTarget creates dir, or checks that it's empty, and reports whether it created it.
+func makeTarget(dir string) (bool, error) {
 	entries, err := os.ReadDir(dir)
-	if errors.Is(err, fs.ErrNotExist) {
-		return nil
+	switch {
+	case errors.Is(err, fs.ErrNotExist):
+		if err := os.MkdirAll(filepath.Dir(dir), 0o755); err != nil {
+			return false, fmt.Errorf("create %s: %w", filepath.Dir(dir), err)
+		}
+		if err := os.Mkdir(dir, 0o755); err != nil {
+			return false, fmt.Errorf("create %s: %w", dir, err)
+		}
+		return true, nil
+	case err != nil:
+		return false, fmt.Errorf("%s exists and isn't a readable folder: %w", dir, err)
+	case len(entries) > 0:
+		return false, fmt.Errorf("%s isn't empty. Choose a new folder", dir)
 	}
+	return false, nil
+}
+
+func moveContents(staging, dir string) error {
+	entries, err := os.ReadDir(staging)
 	if err != nil {
-		return fmt.Errorf("%s exists and isn't a readable folder: %w", dir, err)
+		return fmt.Errorf("read %s: %w", staging, err)
 	}
-	if len(entries) > 0 {
-		return fmt.Errorf("%s isn't empty. Choose a new folder", dir)
+	for i, entry := range entries {
+		if err := os.Rename(filepath.Join(staging, entry.Name()), filepath.Join(dir, entry.Name())); err != nil {
+			for _, moved := range entries[:i] {
+				_ = os.RemoveAll(filepath.Join(dir, moved.Name()))
+			}
+			return fmt.Errorf("move the project into %s: %w", dir, err)
+		}
 	}
 	return nil
 }

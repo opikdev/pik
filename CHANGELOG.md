@@ -4,6 +4,11 @@ All notable changes to pik are recorded here. The format follows [Keep a Changel
 
 ## [Unreleased]
 
+### Fixed
+
+- `pik new` creates the project folder with the usual permissions, such as `755`, instead of `700`.
+- `pik new <starter> .` fills the current folder in place instead of deleting and recreating it, so your shell stays in it and it works on Windows.
+
 ## [0.3.0] - 2026-11-08
 
 ### Added

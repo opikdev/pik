@@ -293,6 +293,65 @@ func TestNewRejects(t *testing.T) {
 	}
 }
 
+func emptyFolder(t *testing.T, name string) string {
+	t.Helper()
+	dir := filepath.Join(t.TempDir(), name)
+	if err := os.Mkdir(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	return dir
+}
+
+func TestNewFillsTheCurrentFolderInPlace(t *testing.T) {
+	newFixture(t, templateFiles)
+	dir := emptyFolder(t, "my-app")
+	before, err := os.Stat(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Chdir(dir)
+
+	if code, _, stderr := pik(t, "new", "demo-starter", ".", "--yes", "--no-setup", "--no-git"); code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr)
+	}
+	after, err := os.Stat(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !os.SameFile(before, after) {
+		t.Fatal("the current folder was replaced instead of filled")
+	}
+	if got := read(t, filepath.Join(dir, "package.json")); !strings.Contains(got, `"name": "my-app"`) {
+		t.Errorf("package.json = %q", got)
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, entry := range entries {
+		if strings.HasPrefix(entry.Name(), ".pik-") {
+			t.Errorf("left the staging folder %s behind", entry.Name())
+		}
+	}
+}
+
+func TestNewLeavesAnEmptyFolderEmptyOnFailure(t *testing.T) {
+	broken := map[string]string{}
+	for name, body := range templateFiles {
+		broken[name] = body
+	}
+	broken["package.json"] = "{}\n"
+	newFixture(t, broken)
+	dir := emptyFolder(t, "app")
+	if code, stdout, _ := pik(t, "new", "demo-starter", dir, "--yes", "--json"); code != 1 || !strings.Contains(stdout, "disagree") {
+		t.Fatalf("exit %d, output %s", code, stdout)
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil || len(entries) != 0 {
+		t.Fatalf("left behind %v, %v", entries, err)
+	}
+}
+
 func TestNewLeavesNothingBehindOnFailure(t *testing.T) {
 	broken := map[string]string{}
 	for name, body := range templateFiles {
