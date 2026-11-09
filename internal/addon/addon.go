@@ -10,7 +10,6 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"slices"
 
 	"go.yaml.in/yaml/v3"
 
@@ -59,6 +58,11 @@ func Add(ctx context.Context, archives Archives, opts Options) (*Result, error) 
 	}
 	if info, err := os.Stat(dir); err != nil || !info.IsDir() {
 		return nil, fmt.Errorf("%s isn't a folder. Run pik add inside your project, or pass its path", dir)
+	}
+	if version, installed, err := installedVersion(dir, opts.Entry.Name); err != nil {
+		return nil, err
+	} else if installed {
+		return nil, fmt.Errorf("%s is already installed at %s, and pik add never changes an installed add-on. To add it again, remove it from addons in %s", opts.Entry.Name, version, RecordFile)
 	}
 
 	staging, err := os.MkdirTemp("", "pik-add-")
@@ -166,9 +170,31 @@ func copyEntry(path, target string, entry fs.DirEntry) error {
 	return nil
 }
 
+func installedVersion(dir, name string) (string, bool, error) {
+	data, err := os.ReadFile(filepath.Join(dir, RecordFile))
+	if errors.Is(err, fs.ErrNotExist) {
+		return "", false, nil
+	}
+	if err != nil {
+		return "", false, fmt.Errorf("read %s: %w", RecordFile, err)
+	}
+	var record struct {
+		Addons []Record `yaml:"addons"`
+	}
+	if err := yaml.Unmarshal(data, &record); err != nil {
+		return "", false, fmt.Errorf("parse %s: %w", RecordFile, err)
+	}
+	for _, addon := range record.Addons {
+		if addon.Name == name {
+			return addon.Version, true, nil
+		}
+	}
+	return "", false, nil
+}
+
 const recordHeader = "# Written by pik. Keep it, because pik update uses it to find the template and answers.\n"
 
-// writeRecord adds or updates the add-on under addons in .pik.yaml, keeping everything else.
+// writeRecord adds the add-on under addons in .pik.yaml, keeping everything else.
 func writeRecord(dir string, record Record) error {
 	path := filepath.Join(dir, RecordFile)
 	var document yaml.Node
@@ -197,15 +223,7 @@ func writeRecord(dir string, record Record) error {
 		addons = &yaml.Node{Kind: yaml.SequenceNode}
 		root.Content = append(root.Content, &yaml.Node{Kind: yaml.ScalarNode, Value: "addons"}, addons)
 	}
-	index := slices.IndexFunc(addons.Content, func(item *yaml.Node) bool {
-		name := valueOf(item, "name")
-		return name != nil && name.Value == record.Name
-	})
-	if index == -1 {
-		addons.Content = append(addons.Content, &entry)
-	} else {
-		addons.Content[index] = &entry
-	}
+	addons.Content = append(addons.Content, &entry)
 
 	var out bytes.Buffer
 	if len(data) == 0 {

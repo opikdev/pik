@@ -4,6 +4,14 @@ All notable changes to pik are recorded here. The format follows [Keep a Changel
 
 ## [Unreleased]
 
+### Fixed
+
+- `pik new` creates the project folder with the usual permissions, such as `755`, instead of `700`.
+- `pik new <starter> .` fills the current folder in place instead of deleting and recreating it, so your shell stays in it and it works on Windows.
+- `pik add` refuses an add-on that `.pik.yaml` already lists, instead of recording a new version whose files it didn't write.
+- Cancelling at the setup prompt of `pik new` or `pik add` says the files are on disk and lists the setup commands, instead of claiming nothing was created.
+- `pik new` defaults the `owner` prompt to your GitHub username, from `git config github.user` or `gh`, so README links and code owners no longer keep `opikdev` when you don't pass `--set owner`.
+
 ## [0.3.0] - 2026-11-08
 
 ### Added

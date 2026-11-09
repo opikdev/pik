@@ -96,22 +96,34 @@ func TestAddCopiesNewFilesAndKeepsExistingOnes(t *testing.T) {
 func TestAddRecordsTheAddonAndKeepsTheProjectRecord(t *testing.T) {
 	newFixture(t, templateFiles).serveAddon(t, harnessFiles())
 	dir := existingProject(t, map[string]string{
-		".pik.yaml": "# Written by pik.\ntemplate: demo-starter\nversion: v1.0.0\naddons:\n  - name: agent-harness\n    version: v0.0.1\n",
+		".pik.yaml": "# Written by pik.\ntemplate: demo-starter\nversion: v1.0.0\naddons:\n  - name: other-addon\n    version: v2.0.0\n",
 	})
 
-	for range 2 {
-		if code, _, stderr := pik(t, "add", "agent-harness", dir, "--no-setup"); code != 0 {
-			t.Fatalf("pik add: %s", stderr)
-		}
+	if code, _, stderr := pik(t, "add", "agent-harness", dir, "--no-setup"); code != 0 {
+		t.Fatalf("pik add: %s", stderr)
 	}
 	record := read(t, filepath.Join(dir, ".pik.yaml"))
-	for _, want := range []string{"# Written by pik.", "template: demo-starter", "version: v0.1.0", "commit: deadbeef"} {
+	for _, want := range []string{"# Written by pik.", "template: demo-starter", "name: other-addon", "name: agent-harness\n    repo: https://github.com/opikdev/agent-harness\n    version: v0.1.0\n    commit: deadbeef"} {
 		if !strings.Contains(record, want) {
 			t.Errorf(".pik.yaml lacks %q:\n%s", want, record)
 		}
 	}
-	if strings.Count(record, "name: agent-harness") != 1 || strings.Contains(record, "v0.0.1") {
-		t.Fatalf("the add-on wasn't updated in place:\n%s", record)
+}
+
+func TestAddRefusesAnAddonThatIsAlreadyInstalled(t *testing.T) {
+	newFixture(t, templateFiles).serveAddon(t, harnessFiles())
+	original := "template: demo-starter\naddons:\n  - name: agent-harness\n    version: v0.0.1\n"
+	dir := existingProject(t, map[string]string{".pik.yaml": original})
+
+	code, _, stderr := pik(t, "add", "agent-harness", dir, "--no-setup")
+	if code != 1 || !strings.Contains(stderr, "agent-harness is already installed at v0.0.1") {
+		t.Fatalf("exit %d, stderr %q", code, stderr)
+	}
+	if got := read(t, filepath.Join(dir, ".pik.yaml")); got != original {
+		t.Errorf(".pik.yaml changed:\n%s", got)
+	}
+	if _, err := os.Stat(filepath.Join(dir, "AGENTS.md")); err == nil {
+		t.Error("copied files for an add-on that was already installed")
 	}
 }
 

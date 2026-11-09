@@ -75,6 +75,7 @@ func (a *app) runNew(cmd *cobra.Command, args []string, flags newFlags) error {
 		Answers:    answers,
 		Ask:        ask,
 		PikVersion: a.version,
+		GitHubUser: gitHubUser(),
 	})
 	if err != nil {
 		return err
@@ -160,6 +161,18 @@ func (a *app) target(parsed *catalog.Catalog, args []string, interactive bool) (
 	return name, dir, nil
 }
 
+// gitHubUser reads your GitHub username from git config github.user, then from the GitHub CLI.
+func gitHubUser() string {
+	for _, args := range [][]string{{"git", "config", "--get", "github.user"}, {"gh", "config", "get", "user", "-h", "github.com"}} {
+		if output, err := exec.Command(args[0], args[1:]...).Output(); err == nil {
+			if user := strings.TrimSpace(string(output)); user != "" {
+				return user
+			}
+		}
+	}
+	return ""
+}
+
 func askPrompt(prompt manifest.Prompt, initial string) (string, error) {
 	value := initial
 	title := prompt.Message
@@ -230,9 +243,12 @@ func (a *app) setup(dir string, commands []string, flags newFlags, interactive b
 	}
 	consent := flags.yes
 	if !consent && interactive {
-		description := "These run in " + dir + ":\n\n  " + strings.Join(commands, "\n  ")
-		if err := huh.NewConfirm().Title("Run the setup commands?").
-			Description(description).Affirmative("Run them").Negative("Skip").Value(&consent).Run(); err != nil {
+		var err error
+		consent, err = confirmSetup("These run in " + dir + ":\n\n  " + strings.Join(commands, "\n  "))
+		if errors.Is(err, huh.ErrUserAborted) {
+			return false, fmt.Errorf("cancelled before setup, so %s has the files but setup didn't run. Run these there:\n  %s", dir, strings.Join(commands, "\n  "))
+		}
+		if err != nil {
 			return false, err
 		}
 	}
@@ -253,6 +269,13 @@ func (a *app) setup(dir string, commands []string, flags newFlags, interactive b
 		}
 	}
 	return true, nil
+}
+
+var confirmSetup = func(description string) (bool, error) {
+	var consent bool
+	err := huh.NewConfirm().Title("Run the setup commands?").
+		Description(description).Affirmative("Run them").Negative("Skip").Value(&consent).Run()
+	return consent, err
 }
 
 func shellCommand(line string) *exec.Cmd {

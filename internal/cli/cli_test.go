@@ -5,7 +5,9 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -14,6 +16,7 @@ import (
 	"strings"
 	"testing"
 
+	"charm.land/huh/v2"
 	"go.yaml.in/yaml/v3"
 )
 
@@ -130,6 +133,10 @@ func newFixture(t *testing.T, files map[string]string) *fixture {
 	t.Setenv("PIK_CATALOG", f.server.URL+"/catalog.yaml")
 	t.Setenv("PIK_RAW_URL", f.server.URL+"/raw")
 	t.Setenv("PIK_ARCHIVE_URL", f.server.URL+"/archive")
+	config := t.TempDir()
+	t.Setenv("GIT_CONFIG_GLOBAL", filepath.Join(config, "gitconfig"))
+	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
+	t.Setenv("GH_CONFIG_DIR", config)
 	return f
 }
 
@@ -239,6 +246,54 @@ func TestNewSkipsReplacementsWithMissingOptionalValues(t *testing.T) {
 	}
 }
 
+func TestNewDefaultsTheOwnerToYourGitHubUser(t *testing.T) {
+	cases := []struct {
+		label, gitUser, ghUser, want string
+		args                         []string
+	}{
+		{"from git config", "octocat", "", "octocat", nil},
+		{"from gh", "", "hubber", "hubber", nil},
+		{"git config before gh", "octocat", "hubber", "octocat", nil},
+		{"--set wins", "octocat", "", "acme", []string{"--set", "owner=acme"}},
+		{"an invalid user is ignored", "not valid!", "", "", nil},
+	}
+	for _, c := range cases {
+		t.Run(c.label, func(t *testing.T) {
+			files := maps.Clone(templateFiles)
+			files["pik.yaml"] = strings.Replace(manifestFile, "    message: GitHub owner\n", "    message: GitHub owner\n    pattern: ^[A-Za-z0-9-]+$\n", 1)
+			newFixture(t, files)
+			if c.gitUser != "" {
+				writeFile(t, os.Getenv("GIT_CONFIG_GLOBAL"), "[github]\n\tuser = "+c.gitUser+"\n")
+			}
+			if c.ghUser != "" {
+				if _, err := exec.LookPath("gh"); err != nil {
+					t.Skip("gh isn't installed")
+				}
+				writeFile(t, filepath.Join(os.Getenv("GH_CONFIG_DIR"), "hosts.yml"), "github.com:\n    user: "+c.ghUser+"\n")
+			}
+			dir := filepath.Join(t.TempDir(), "my-api")
+			args := append([]string{"new", "demo-starter", dir, "--yes", "--no-setup", "--no-git"}, c.args...)
+			if code, _, stderr := pik(t, args...); code != 0 {
+				t.Fatalf("exit %d: %s", code, stderr)
+			}
+			link := "https://github.com/opikdev/my-api/actions"
+			if c.want != "" {
+				link = "https://github.com/" + c.want + "/my-api/actions"
+			}
+			if got := read(t, filepath.Join(dir, "README.md")); !strings.Contains(got, link) {
+				t.Errorf("README.md = %q, want %s", got, link)
+			}
+		})
+	}
+}
+
+func writeFile(t *testing.T, path, content string) {
+	t.Helper()
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestNewNeedsConsentForSetup(t *testing.T) {
 	newFixture(t, templateFiles)
 	dir := filepath.Join(t.TempDir(), "careful")
@@ -290,6 +345,65 @@ func TestNewRejects(t *testing.T) {
 	}
 	if read(t, filepath.Join(occupied, "keep.txt")) != "mine" {
 		t.Error("an existing folder was changed")
+	}
+}
+
+func emptyFolder(t *testing.T, name string) string {
+	t.Helper()
+	dir := filepath.Join(t.TempDir(), name)
+	if err := os.Mkdir(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	return dir
+}
+
+func TestNewFillsTheCurrentFolderInPlace(t *testing.T) {
+	newFixture(t, templateFiles)
+	dir := emptyFolder(t, "my-app")
+	before, err := os.Stat(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Chdir(dir)
+
+	if code, _, stderr := pik(t, "new", "demo-starter", ".", "--yes", "--no-setup", "--no-git"); code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr)
+	}
+	after, err := os.Stat(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !os.SameFile(before, after) {
+		t.Fatal("the current folder was replaced instead of filled")
+	}
+	if got := read(t, filepath.Join(dir, "package.json")); !strings.Contains(got, `"name": "my-app"`) {
+		t.Errorf("package.json = %q", got)
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, entry := range entries {
+		if strings.HasPrefix(entry.Name(), ".pik-") {
+			t.Errorf("left the staging folder %s behind", entry.Name())
+		}
+	}
+}
+
+func TestNewLeavesAnEmptyFolderEmptyOnFailure(t *testing.T) {
+	broken := map[string]string{}
+	for name, body := range templateFiles {
+		broken[name] = body
+	}
+	broken["package.json"] = "{}\n"
+	newFixture(t, broken)
+	dir := emptyFolder(t, "app")
+	if code, stdout, _ := pik(t, "new", "demo-starter", dir, "--yes", "--json"); code != 1 || !strings.Contains(stdout, "disagree") {
+		t.Fatalf("exit %d, output %s", code, stdout)
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil || len(entries) != 0 {
+		t.Fatalf("left behind %v, %v", entries, err)
 	}
 }
 
@@ -355,5 +469,22 @@ func TestDoctorFailsOnMissingTools(t *testing.T) {
 	code, stdout, _ := pik(t, "doctor", "demo-starter")
 	if code != 1 || !strings.Contains(stdout, "✗ definitely-not-installed: not installed") {
 		t.Fatalf("exit %d, output %s", code, stdout)
+	}
+}
+
+func TestCancellingSetupSaysTheFilesExist(t *testing.T) {
+	original := confirmSetup
+	t.Cleanup(func() { confirmSetup = original })
+	confirmSetup = func(string) (bool, error) { return false, huh.ErrUserAborted }
+
+	dir := t.TempDir()
+	a := &app{stdout: &bytes.Buffer{}, stderr: &bytes.Buffer{}}
+	_, err := a.setup(dir, []string{"pnpm install", "pnpm build"}, newFlags{}, true)
+	if err == nil || errors.Is(err, huh.ErrUserAborted) {
+		t.Fatalf("err = %v, want an error that isn't a plain cancel", err)
+	}
+	want := "cancelled before setup, so " + dir + " has the files but setup didn't run. Run these there:\n  pnpm install\n  pnpm build"
+	if err.Error() != want {
+		t.Errorf("err = %q, want %q", err, want)
 	}
 }
