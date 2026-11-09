@@ -48,6 +48,8 @@ type Options struct {
 	Answers    map[string]string
 	Ask        Ask
 	PikVersion string
+	// GitHubUser is the default for a prompt named owner that has no default of its own.
+	GitHubUser string
 }
 
 // Result describes the generated project.
@@ -173,17 +175,21 @@ func resolve(spec *manifest.Manifest, opts Options, dirName string) (map[string]
 	if answers == nil {
 		answers = map[string]string{}
 	}
-	if opts.Ask != nil {
-		for _, prompt := range spec.Prompts {
-			if _, ok := answers[prompt.Name]; ok {
-				continue
-			}
-			value, err := opts.Ask(prompt, prompt.DefaultFor(dirName))
-			if err != nil {
+	for _, prompt := range spec.Prompts {
+		if _, ok := answers[prompt.Name]; ok {
+			continue
+		}
+		value := prompt.DefaultFor(dirName)
+		if value == "" && prompt.Name == "owner" && opts.GitHubUser != "" && prompt.Validate(opts.GitHubUser) == nil {
+			value = opts.GitHubUser
+		}
+		if opts.Ask != nil {
+			var err error
+			if value, err = opts.Ask(prompt, value); err != nil {
 				return nil, err
 			}
-			answers[prompt.Name] = value
 		}
+		answers[prompt.Name] = value
 	}
 	return spec.Resolve(answers, dirName)
 }

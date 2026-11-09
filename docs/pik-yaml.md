@@ -26,7 +26,7 @@ check: [pnpm verify]
 |---|---|---|
 | `schema` | number | Always `1` |
 | `requires` | list | Tools `pik doctor` checks. `name` is the command, `version` an optional minimum, and `versionArgs` overrides `--version` |
-| `prompts` | list | Values to ask for. Each has `name`, `message`, and optionally `pattern`, `default`, and `optional`. `{{dir}}` is the project folder name |
+| `prompts` | list | Values to ask for. Each has `name`, `message`, and optionally `pattern`, `default`, and `optional`. `{{dir}}` is the project folder name. A prompt named `owner` with no `default` defaults to your GitHub username, from `git config github.user` or the GitHub CLI, when it matches `pattern` |
 | `replace` | list | Text to swap in listed files, in order. See [Replacement order](#replacement-order). `to` can use `{{prompt}}` values. A replacement is skipped when one of its values is empty |
 | `exclude` | list | Paths to delete from the generated project |
 | `setup` | list | Shell commands to run after generating, with consent |

@@ -75,6 +75,7 @@ func (a *app) runNew(cmd *cobra.Command, args []string, flags newFlags) error {
 		Answers:    answers,
 		Ask:        ask,
 		PikVersion: a.version,
+		GitHubUser: gitHubUser(),
 	})
 	if err != nil {
 		return err
@@ -158,6 +159,18 @@ func (a *app) target(parsed *catalog.Catalog, args []string, interactive bool) (
 		}
 	}
 	return name, dir, nil
+}
+
+// gitHubUser reads your GitHub username from git config github.user, then from the GitHub CLI.
+func gitHubUser() string {
+	for _, args := range [][]string{{"git", "config", "--get", "github.user"}, {"gh", "config", "get", "user", "-h", "github.com"}} {
+		if output, err := exec.Command(args[0], args[1:]...).Output(); err == nil {
+			if user := strings.TrimSpace(string(output)); user != "" {
+				return user
+			}
+		}
+	}
+	return ""
 }
 
 func askPrompt(prompt manifest.Prompt, initial string) (string, error) {

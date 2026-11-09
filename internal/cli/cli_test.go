@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -132,6 +133,10 @@ func newFixture(t *testing.T, files map[string]string) *fixture {
 	t.Setenv("PIK_CATALOG", f.server.URL+"/catalog.yaml")
 	t.Setenv("PIK_RAW_URL", f.server.URL+"/raw")
 	t.Setenv("PIK_ARCHIVE_URL", f.server.URL+"/archive")
+	config := t.TempDir()
+	t.Setenv("GIT_CONFIG_GLOBAL", filepath.Join(config, "gitconfig"))
+	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
+	t.Setenv("GH_CONFIG_DIR", config)
 	return f
 }
 
@@ -238,6 +243,54 @@ func TestNewSkipsReplacementsWithMissingOptionalValues(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(dir, "setup-ran.txt")); err == nil {
 		t.Error("--no-setup still ran setup")
+	}
+}
+
+func TestNewDefaultsTheOwnerToYourGitHubUser(t *testing.T) {
+	cases := []struct {
+		label, gitUser, ghUser, want string
+		args                         []string
+	}{
+		{"from git config", "octocat", "", "octocat", nil},
+		{"from gh", "", "hubber", "hubber", nil},
+		{"git config before gh", "octocat", "hubber", "octocat", nil},
+		{"--set wins", "octocat", "", "acme", []string{"--set", "owner=acme"}},
+		{"an invalid user is ignored", "not valid!", "", "", nil},
+	}
+	for _, c := range cases {
+		t.Run(c.label, func(t *testing.T) {
+			files := maps.Clone(templateFiles)
+			files["pik.yaml"] = strings.Replace(manifestFile, "    message: GitHub owner\n", "    message: GitHub owner\n    pattern: ^[A-Za-z0-9-]+$\n", 1)
+			newFixture(t, files)
+			if c.gitUser != "" {
+				writeFile(t, os.Getenv("GIT_CONFIG_GLOBAL"), "[github]\n\tuser = "+c.gitUser+"\n")
+			}
+			if c.ghUser != "" {
+				if _, err := exec.LookPath("gh"); err != nil {
+					t.Skip("gh isn't installed")
+				}
+				writeFile(t, filepath.Join(os.Getenv("GH_CONFIG_DIR"), "hosts.yml"), "github.com:\n    user: "+c.ghUser+"\n")
+			}
+			dir := filepath.Join(t.TempDir(), "my-api")
+			args := append([]string{"new", "demo-starter", dir, "--yes", "--no-setup", "--no-git"}, c.args...)
+			if code, _, stderr := pik(t, args...); code != 0 {
+				t.Fatalf("exit %d: %s", code, stderr)
+			}
+			link := "https://github.com/opikdev/my-api/actions"
+			if c.want != "" {
+				link = "https://github.com/" + c.want + "/my-api/actions"
+			}
+			if got := read(t, filepath.Join(dir, "README.md")); !strings.Contains(got, link) {
+				t.Errorf("README.md = %q, want %s", got, link)
+			}
+		})
+	}
+}
+
+func writeFile(t *testing.T, path, content string) {
+	t.Helper()
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
 	}
 }
 
