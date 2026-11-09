@@ -4,6 +4,8 @@ All notable changes to pik are recorded here. The format follows [Keep a Changel
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-09
+
 ### Fixed
 
 - `pik new` creates the project folder with the usual permissions, such as `755`, instead of `700`.
