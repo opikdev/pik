@@ -5,6 +5,10 @@ A CLI that creates projects from agent-ready starter templates. It reads the [st
 [![CI](https://github.com/opikdev/pik/actions/workflows/ci.yml/badge.svg)](https://github.com/opikdev/pik/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
+![pik new creating a project from the api-hono-starter template](docs/images/demo.gif)
+
+<sub>Recorded with [VHS](https://github.com/charmbracelet/vhs) from [docs/demo.tape](docs/demo.tape).</sub>
+
 ## Features
 
 - **Released code only:** `pik new` downloads the tag the catalog pins, never a branch.
